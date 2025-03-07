@@ -162,13 +162,14 @@ TEST(PjRtCApiClientTest, NonEmptyExecutableFingerprint) {
   PjRtCApiClient* c_client = dynamic_cast<PjRtCApiClient*>(client.get());
   ASSERT_NE(c_client, nullptr);
   if (c_client->pjrt_c_api()->pjrt_api_version.minor_version >= 58) {
-    EXPECT_TRUE(executable->FingerprintExecutable().ok());
+    EXPECT_TRUE(executable->GetExecutable()->FingerprintExecutable().ok());
   } else if (c_client->pjrt_c_api()->pjrt_api_version.minor_version >= 35) {
-    EXPECT_FALSE(executable->FingerprintExecutable().ok());
+    EXPECT_FALSE(executable->GetExecutable()->FingerprintExecutable().ok());
   } else {
     // TODO(yeounoh): To be removed after 01/20/2024.
-    EXPECT_EQ(executable->FingerprintExecutable().status().code(),
-              absl::StatusCode::kUnimplemented);
+    EXPECT_EQ(
+        executable->GetExecutable()->FingerprintExecutable().status().code(),
+        absl::StatusCode::kUnimplemented);
   }
 }
 

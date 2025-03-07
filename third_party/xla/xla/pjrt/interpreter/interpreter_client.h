@@ -287,7 +287,8 @@ class InterpreterLiteralWrapperBuffer final : public PjRtBuffer {
   bool is_deleted_ = false;
 };
 
-class InterpreterLoadedExecutable final : public PjRtLoadedExecutable {
+class InterpreterLoadedExecutable final : public PjRtLoadedExecutable,
+                                          public PjRtExecutable {
  public:
   explicit InterpreterLoadedExecutable(
       absl::Nonnull<PjRtClient*> client, std::unique_ptr<HloModule> hlo_module,

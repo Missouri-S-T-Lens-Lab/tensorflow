@@ -595,10 +595,15 @@ class PjRtCApiExecutable : public PjRtExecutable {
   std::unique_ptr<PJRT_Executable, ::pjrt::PJRT_ExecutableDeleter> executable_;
 };
 
-class PjRtCApiLoadedExecutable : public PjRtLoadedExecutable {
+class PjRtCApiLoadedExecutable : public PjRtLoadedExecutable,
+                                 public PjRtExecutable {
  public:
   PjRtCApiLoadedExecutable(PjRtCApiClient* client,
                            PJRT_LoadedExecutable* executable);
+
+  std::unique_ptr<PjRtExecutable> GetExecutable() const override {
+    return std::make_unique<PjRtExecutableForwarder>(this);
+  }
 
   PjRtClient* client() const override { return client_; }
   absl::string_view name() const override { return executable_->name(); }
