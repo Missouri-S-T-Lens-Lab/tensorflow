@@ -60,7 +60,7 @@ litert::Expected<void> LiteRtEnvironmentOptionsT::SetOption(
     LiteRtEnvOption option) {
   if (option.value.type == kLiteRtAnyTypeString) {
     auto [string_it, _] = string_option_values_.insert_or_assign(
-        option.tag, option.value.str_value);
+        option.tag, std::string(option.value.str_value));
     LiteRtAny value{/*type=*/kLiteRtAnyTypeString};
     value.str_value = string_it->second.c_str();
     options_[option.tag] = value;
