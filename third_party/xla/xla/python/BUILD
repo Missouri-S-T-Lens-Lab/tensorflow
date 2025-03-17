@@ -1,9 +1,9 @@
 load("@local_config_cuda//cuda:build_defs.bzl", "if_cuda")
 load("@local_config_rocm//rocm:build_defs.bzl", "if_rocm")
-load("//xla:pytype.default.bzl", "pytype_strict_library")
-load("//xla:strict.default.bzl", "py_strict_library", "py_strict_test")
+load("//xla:py_strict.bzl", "py_strict_library", "py_strict_test")
+load("//xla:pytype.bzl", "pytype_strict_library")
 load(
-    "//xla:xla.bzl",
+    "//xla:xla.default.bzl",
     "xla_cc_test",
     "xla_py_test_deps",
 )
@@ -397,7 +397,7 @@ cc_library(
         "@local_tsl//tsl/profiler/lib:profiler_session",
         "@local_tsl//tsl/profiler/lib:traceme",
         "@local_tsl//tsl/profiler/protobuf:profiled_instructions_proto_cc",
-    ] + if_google(["@com_google_protobuf//:any_cc_proto"]),
+    ] + if_google(["//google/protobuf:any_cc_proto"]),
 )
 
 cc_library(
@@ -438,7 +438,7 @@ cc_library(
         "@llvm-project//llvm:Support",
         "@nanobind",
     ] + if_google([
-        "@com_google_protobuf//:any_cc_proto",
+        "//google/protobuf:any_cc_proto",
     ]),
 )
 

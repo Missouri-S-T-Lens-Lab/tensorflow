@@ -1,8 +1,8 @@
 """Default (OSS) build versions of TSL general-purpose build extensions."""
 
-load("//xla/tsl:package_groups.bzl", "DEFAULT_LOAD_VISIBILITY")
+load("//third_party/tensorflow/compiler/xla/tsl:package_groups.bzl", "DEFAULT_LOAD_VISIBILITY")
 load(
-    "//xla/tsl:tsl.bzl",
+    "//third_party/tensorflow/compiler/xla/tsl:tsl.bzl",
     _filegroup = "filegroup",
     _get_compatible_with_libtpu_portable = "get_compatible_with_libtpu_portable",
     _get_compatible_with_portable = "get_compatible_with_portable",
