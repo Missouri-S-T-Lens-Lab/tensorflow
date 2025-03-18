@@ -93,6 +93,9 @@ class ConstantPattern : public OpConversionPattern<ConstantOp> {
   }
 };
 
+// `AllReduceOp` is a special case as it doesn't reshard the tensor and
+// therefore doesn't need to be converted to a copy op, therefore we simply
+// erase it.
 class AllReducePattern : public OpConversionPattern<AllReduceOp> {
  public:
   using OpConversionPattern::OpConversionPattern;
@@ -108,29 +111,9 @@ class AllReducePattern : public OpConversionPattern<AllReduceOp> {
 
 void rewriteCollectiveOp(mlir::Operation* op, mlir::Value input,
                          TensorShardingAttr sharding,
-                         ConversionPatternRewriter& rewriter,
-                         bool addUnspecifiedDims = false) {
+                         ConversionPatternRewriter& rewriter) {
   auto copyOp = rewriter.replaceOpWithNewOp<mhlo::CopyOp>(op, input);
   mlir::sdy::setShardings(copyOp, sharding);
-
-  if (!addUnspecifiedDims) {
-    return;
-  }
-
-  SmallVector<int64_t> unspecifiedDims;
-  for (auto [dim, dimSharding] : llvm::enumerate(sharding.getDimShardings())) {
-    // Unspecified dims are those that are marked open but is not partitioned
-    // on any axes.
-    if (!dimSharding.getIsClosed() && dimSharding.emptyAxes()) {
-      unspecifiedDims.push_back(dim);
-    }
-  }
-  if (!unspecifiedDims.empty()) {
-    copyOp->setAttr(kXlaBackendConfigAttr,
-                    StringAttr::get(op->getContext(),
-                                    xla::sharding_op_util::EncodeAttributes(
-                                        unspecifiedDims)));
-  }
 }
 
 class ReshardPattern : public OpConversionPattern<ReshardOp> {
@@ -141,8 +124,8 @@ class ReshardPattern : public OpConversionPattern<ReshardOp> {
   LogicalResult matchAndRewrite(
       ReshardOp op, OpAdaptor adaptor,
       ConversionPatternRewriter& rewriter) const override {
-    rewriteCollectiveOp(op, adaptor.getInput(), adaptor.getSharding(), rewriter,
-                        /*addUnspecifiedDims=*/true);
+    rewriteCollectiveOp(op, adaptor.getInput(), adaptor.getSharding(),
+                        rewriter);
     return success();
   }
 };
