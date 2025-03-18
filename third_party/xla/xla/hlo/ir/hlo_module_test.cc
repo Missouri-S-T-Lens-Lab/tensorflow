@@ -211,6 +211,53 @@ TEST(HloModuleTest, CloneWithNewConfig) {
             m1.config().device_memory_size());
 }
 
+TEST(HloModuleTest, ClonePreservesUniqueId) {
+  TF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<HloModule> module,
+                          ParseAndReturnUnverifiedModule(R"(
+    HloModule m
+
+    add {
+        p0 = f16[] parameter(0)
+        p1 = f16[] parameter(1)
+        ROOT add = f16[] add(p0, p1)
+    }
+
+    // HloModule::Clone() deletes dead code.
+    dead_code {
+        p0 = f16[] parameter(0)
+        p1 = f16[] parameter(1)
+        ROOT add = f16[] add(p0, p1)
+    }
+
+    ENTRY main {
+        p0 = f16[10000000]{0} parameter(0)
+        p1 = f16[10000000]{0} parameter(1)
+        ar0 = f16[10000000]{0} all-reduce(p0), replica_groups={}, to_apply=add
+        ar1 = f16[10000000]{0} all-reduce(p1), replica_groups={}, to_apply=add
+        ROOT result = tuple(ar0, ar1)
+    }
+  )"));
+
+  // Annotate all instructions with a unique id. Frontend attributes are
+  // preserved when cloning.
+  static constexpr char kUniqueIdAttr[] = "collective_id";
+  for (HloComputation* comp : module->computations()) {
+    for (HloInstruction* instr : comp->instructions()) {
+      instr->set_frontend_attribute(kUniqueIdAttr,
+                                    absl::StrCat(instr->unique_id()));
+    }
+  }
+
+  std::unique_ptr<HloModule> clone = module->Clone(kCloneSuffix);
+  for (HloComputation* comp : clone->computations()) {
+    for (HloInstruction* instr : comp->instructions()) {
+      EXPECT_EQ(instr->get_frontend_attribute(kUniqueIdAttr),
+                absl::StrCat(instr->unique_id()))
+          << "unique_id differs for " << instr->ToString();
+    }
+  }
+}
+
 TEST(HloModuleTest, AbslHashInstructionOrdering) {
   TF_ASSERT_OK_AND_ASSIGN(std::unique_ptr<HloModule> module1,
                           ParseAndReturnUnverifiedModule(R"(
