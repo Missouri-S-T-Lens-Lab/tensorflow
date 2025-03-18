@@ -20,6 +20,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/types/source_location.h"
 #include "tensorflow/lite/experimental/litert/c/litert_common.h"  // IWYU pragma: keep
 #include "tensorflow/lite/experimental/litert/c/litert_logging.h"  // IWYU pragma: keep
 #include "tensorflow/lite/experimental/litert/cc/litert_expected.h"  // IWYU pragma: keep
@@ -117,28 +118,57 @@ namespace litert {
 // The error message may be completed with extra info by using the << operator.
 class ErrorStatusBuilder {
  public:
-  explicit ErrorStatusBuilder(bool expr_result)
-      : error_(kLiteRtStatusErrorUnknown) {}
+  explicit ErrorStatusBuilder(
+      bool expr_result,
+      absl::SourceLocation loc = absl::SourceLocation::current())
+      : error_(kLiteRtStatusErrorUnknown), loc_(loc) {}
+
   template <class T>
-  explicit ErrorStatusBuilder(const litert::Expected<T>& expected)
-      : error_(expected.Error()) {}
+  explicit ErrorStatusBuilder(
+      const litert::Expected<T>& expected,
+      absl::SourceLocation loc = absl::SourceLocation::current())
+      : error_(expected.Error()), loc_(loc) {}
+
   template <class T>
-  explicit ErrorStatusBuilder(litert::Expected<T>&& expected)
-      : error_(std::move(expected.Error())) {}
-  explicit ErrorStatusBuilder(LiteRtStatus status) : error_(status) {}
-  explicit ErrorStatusBuilder(const litert::Unexpected& unexpected)
-      : error_(unexpected.Error()) {}
-  explicit ErrorStatusBuilder(litert::Unexpected&& unexpected)
-      : error_(std::move(unexpected.Error())) {}
+  explicit ErrorStatusBuilder(
+      litert::Expected<T>&& expected,
+      absl::SourceLocation loc = absl::SourceLocation::current())
+      : error_(std::move(expected.Error())), loc_(loc) {}
+
+  explicit ErrorStatusBuilder(
+      LiteRtStatus status,
+      absl::SourceLocation loc = absl::SourceLocation::current())
+      : error_(status), loc_(loc) {}
+
+  explicit ErrorStatusBuilder(
+      const litert::Unexpected& unexpected,
+      absl::SourceLocation loc = absl::SourceLocation::current())
+      : error_(unexpected.Error()), loc_(loc) {}
+
+  explicit ErrorStatusBuilder(
+      litert::Unexpected&& unexpected,
+      absl::SourceLocation loc = absl::SourceLocation::current())
+      : error_(std::move(unexpected.Error())), loc_(loc) {}
 
   // NOLINTBEGIN(*-explicit-constructor): This class transparently converts to
   // `LiteRtStatus` and `litert::Expected`.
 
   // Note: this conversion logs the error message if there is one.
   operator LiteRtStatus() const noexcept {
+#ifndef NDEBUG
     if (ShouldLog()) {
-      LITERT_LOG(log_level_, "%s", LogMessage().c_str());
+      LiteRtLogger logger = LiteRtGetDefaultLogger();
+      LiteRtLogSeverity __min_severity__;
+      if (LiteRtGetMinLoggerSeverity(logger, &__min_severity__) !=
+          kLiteRtStatusOk) {
+        __min_severity__ = kLiteRtLogSeverityVerbose;
+      }
+      if (log_level_ >= __min_severity__) {
+        LiteRtLoggerLog(logger, log_level_, "[%s:%u] %s", loc_.file_name(),
+                        loc_.line(), LogMessage().c_str());
+      }
     }
+#endif
     return error_.Status();
   }
 
@@ -223,6 +253,7 @@ class ErrorStatusBuilder {
   }
 
   litert::Error error_;
+  absl::SourceLocation loc_;
   std::unique_ptr<std::stringstream> extra_log_;
   LiteRtLogSeverity log_level_ = kLiteRtLogSeverityError;
 };

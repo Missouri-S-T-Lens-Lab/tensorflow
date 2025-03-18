@@ -260,6 +260,7 @@ cc_library(
         ":litert_expected",
         "//tensorflow/lite/experimental/litert/c:litert_common",
         "//tensorflow/lite/experimental/litert/c:litert_logging",
+        "@com_google_absl//absl/types:source_location",
     ],
 )
 
