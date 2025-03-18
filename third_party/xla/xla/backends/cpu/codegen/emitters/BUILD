@@ -30,6 +30,7 @@ cc_library(
         "cpu_scatter_emitter.h",
     ],
     deps = [
+        "//xla:cpu_function_runtime",
         "//xla:shape_util",
         "//xla:status_macros",
         "//xla:util",

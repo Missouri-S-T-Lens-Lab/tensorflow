@@ -80,6 +80,7 @@ limitations under the License.
 #include "xla/codegen/emitters/ir/xla_ops.h"
 #include "xla/codegen/emitters/transforms/passes.h"
 #include "xla/codegen/emitters/type_util.h"
+#include "xla/cpu_function_runtime.h"
 #include "xla/hlo/analysis/indexing_analysis.h"
 #include "xla/hlo/analysis/indexing_map.h"
 #include "xla/hlo/ir/hlo_instruction.h"
@@ -276,7 +277,8 @@ CpuFusionEmitterBase::CreateMLIRModule(
         mlir::LLVM::LLVMDialect::getDereferenceableAttrName(),
         builder.getIndexAttr(slice.size())));
     attrs.push_back(builder.getNamedAttr(
-        mlir::LLVM::LLVMDialect::getAlignAttrName(), builder.getIndexAttr(32)));
+        mlir::LLVM::LLVMDialect::getAlignAttrName(),
+        builder.getIndexAttr(cpu_function_runtime::MinAlign())));
     return builder.getDictionaryAttr(attrs);
   };
 
