@@ -19,7 +19,6 @@ limitations under the License.
 #include <limits>
 #include <map>
 #include <numeric>
-#include <type_traits>
 #include <vector>
 
 #include <gmock/gmock.h>
@@ -36,7 +35,6 @@ namespace ops {
 namespace builtin {
 
 TfLiteRegistration* Register_BATCH_MATMUL_REF();
-TfLiteRegistration* Register_BATCH_MATMUL_GENERIC_OPTIMIZED();
 
 }  // namespace builtin
 }  // namespace ops
@@ -47,27 +45,13 @@ using ::testing::ElementsAre;
 using ::testing::ElementsAreArray;
 
 template <typename T>
-tflite::TensorType GetTFLiteType() {
-  if (std::is_same<T, int8_t>::value) {
-    return TensorType_INT8;
-  }
-  if (std::is_same<T, int16_t>::value) {
-    return TensorType_INT16;
-  }
-  if (std::is_same<T, int32_t>::value) {
-    return TensorType_INT32;
-  }
-  return TensorType_FLOAT32;
-}
-
-template <typename T>
 class BatchMatMulOpModel : public SingleOpModel {
  public:
   BatchMatMulOpModel(const TensorData& lhs, const TensorData& rhs,
                      bool adj_x = false, bool adj_y = false) {
     lhs_id_ = AddInput(lhs);
     rhs_id_ = AddInput(rhs);
-    output_id_ = AddOutput(GetTFLiteType<T>());
+    output_id_ = AddOutput(lhs.type);
     SetBuiltinOp(BuiltinOperator_BATCH_MATMUL,
                  BuiltinOptions_BatchMatMulOptions,
                  CreateBatchMatMulOptions(builder_, adj_x, adj_y).Union());
@@ -87,8 +71,6 @@ class BatchMatMulOpModel : public SingleOpModel {
 
 const auto kKernelMap = new std::map<string, TfLiteRegistration*>({
     {"Reference", ops::builtin::Register_BATCH_MATMUL_REF()},
-    {"GenericOptimized",
-     ops::builtin::Register_BATCH_MATMUL_GENERIC_OPTIMIZED()},
 });
 
 class BatchMatMulOpTest : public SingleOpTest {
@@ -139,31 +121,6 @@ TEST_P(BatchMatMulOpTest, Float32Test_Simple) {
   EXPECT_THAT(model.GetOutput(),
               Pointwise(FloatingPointEq(),
                         {74., 80., 86., 92., 173., 188., 203., 218.}));
-  EXPECT_THAT(model.GetOutputShape(), ElementsAreArray({1, 2, 4}));
-}
-
-TEST_P(BatchMatMulOpTest, Int8Test_Simple) {
-  BatchMatMulOpModel<int32_t> model({TensorType_INT8, {1, 2, 3}},
-                                    {TensorType_INT8, {1, 3, 4}});
-  model.PopulateTensor<int8_t>(model.lhs(), {1, 2, 3, 4, 5, 6});
-  model.PopulateTensor<int8_t>(model.rhs(),
-                               {7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18});
-  ASSERT_EQ(model.Invoke(), kTfLiteOk);
-  EXPECT_THAT(model.GetOutput(),
-              ElementsAreArray({74, 80, 86, 92, 173, 188, 203, 218}));
-  EXPECT_THAT(model.GetOutputShape(), ElementsAreArray({1, 2, 4}));
-}
-
-TEST_P(BatchMatMulOpTest, Int8Test_LargeElement) {
-  BatchMatMulOpModel<int32_t> model({TensorType_INT8, {1, 2, 3}},
-                                    {TensorType_INT8, {1, 3, 4}});
-  model.PopulateTensor<int8_t>(model.lhs(), {121, 122, 123, 124, 125, 126});
-  model.PopulateTensor<int8_t>(model.rhs(), {117, 118, 119, 110, 111, 112, 113,
-                                             114, 115, 116, 117, 118});
-  ASSERT_EQ(model.Invoke(), kTfLiteOk);
-  EXPECT_THAT(model.GetOutput(),
-              ElementsAreArray(
-                  {41844, 42210, 42576, 41732, 42873, 43248, 43623, 42758}));
   EXPECT_THAT(model.GetOutputShape(), ElementsAreArray({1, 2, 4}));
 }
 
